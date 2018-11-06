@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hbase-site
+  labels:
+    app: "{{ template "kafka-connect.fullname" . }}"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+data:
+  hbase-site.xml: |
+    <configuration>
+      <property>
+        <name>hbase.master</name>
+        <value>hbase-hbase-master:16010</value>
+      </property>
+      <property>
+        <name>zookeeper.znode.parent</name>
+        <value>/hbase</value>
+      </property>
+      <property>
+        <name>hbase.rootdir</name>
+        <value>hdfs://hbase-hdfs-nn:9000/hbase</value>
+      </property>
+      <property>
+        <name>hbase.cluster.distributed</name>
+        <value>true</value>
+      </property>
+      <property>
+        <name>hbase.zookeeper.quorum</name>
+        <value>hbase-zookeeper</value>
+      </property>
+    </configuration>

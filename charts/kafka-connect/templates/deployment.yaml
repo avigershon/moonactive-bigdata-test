@@ -1,0 +1,137 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "kafka-connect.fullname" . }}
+  labels:
+    app: {{ template "kafka-connect.name" . }}
+    chart: {{ template "kafka-connect.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "kafka-connect.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "kafka-connect.name" . }}
+        release: {{ .Release.Name }}
+      {{- if .Values.prometheus.jmx.enabled }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.prometheus.jmx.port | quote }}
+      {{- end }}
+    spec:
+      containers:
+        {{- if .Values.prometheus.jmx.enabled }}
+        - name: prometheus-jmx-exporter
+          image: "{{ .Values.prometheus.jmx.image }}:{{ .Values.prometheus.jmx.imageTag }}"
+          command:
+          - java
+          - -XX:+UnlockExperimentalVMOptions
+          - -XX:+UseCGroupMemoryLimitForHeap
+          - -XX:MaxRAMFraction=1
+          - -XshowSettings:vm
+          - -jar
+          - jmx_prometheus_httpserver.jar
+          - {{ .Values.prometheus.jmx.port | quote }}
+          - /etc/jmx-kafka-connect/jmx-kafka-connect-prometheus.yml
+          ports:
+          - containerPort: {{ .Values.prometheus.jmx.port }}
+          resources:
+{{ toYaml .Values.prometheus.jmx.resources | indent 12 }}
+          volumeMounts:
+          - name: jmx-config
+            mountPath: /etc/jmx-kafka-connect
+        {{- end }}
+        - name: {{ template "kafka-connect.name" . }}-server
+          image: "{{ .Values.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: "{{ .Values.imagePullPolicy }}"
+          command: ["/bin/bash"]
+          args: ["-c","cd /usr/share/java/kafka-connect-hbase && \
+                       cp /usr/share/confluent-hub-components/nishutayal-kafka-connect-hbase/lib/kafka-connect-hbase-1.0.0.jar . && \
+                       jar -uvf kafka-connect-hbase-1.0.0.jar hbase-site.xml && \
+                       /usr/bin/connect-standalone /etc/schema-registry/connect-avro-standalone.properties /etc/kafka-connect-hbase/moonactiveplayers-hbase-sink.properties /etc/kafka-connect-hbase/moonactivedaily-hbase-sink.properties"]
+
+          ports:
+            - name: kafka-connect
+              containerPort: {{ .Values.servicePort}}
+              protocol: TCP
+            {{- if .Values.prometheus.jmx.enabled }}
+            - containerPort: {{ .Values.jmx.port }}
+              name: jmx
+            {{- end }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          volumeMounts:
+            # - name: connect-avro-distributed
+            #   mountPath: "/etc/schema-registry/connect-avro-distributed.properties"
+            #   subPath: "connect-avro-distributed.properties"
+            - name: connect-avro-standalone
+              mountPath: "/etc/schema-registry/connect-avro-standalone.properties"
+              subPath: "connect-avro-standalone.properties"
+            - name: hbase-site
+              mountPath: "/usr/share/java/kafka-connect-hbase/hbase-site.xml"
+              subPath: "hbase-site.xml"
+            - name: moonactiveplayers-configmap
+              mountPath: "/etc/kafka-connect-hbase/moonactiveplayers-hbase-sink.properties"
+              subPath: "moonactiveplayers-hbase-sink.properties"
+            - name: moonactivedaily-configmap
+              mountPath: "/etc/kafka-connect-hbase/moonactivedaily-hbase-sink.properties"
+              subPath: "moonactivedaily-hbase-sink.properties"
+          env:
+            - name: CONNECT_REST_ADVERTISED_HOST_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CONNECT_PLUGIN_PATH
+              value: {{ .Values.pluginPath }}
+            - name: CONNECT_BOOTSTRAP_SERVERS
+              value: {{ template "kafka-connect.kafka.bootstrapServers" . }}
+            - name: CONNECT_GROUP_ID
+              value: {{ template "kafka-connect.groupId" . }}
+            - name: CONNECT_CONFIG_STORAGE_TOPIC
+              value: {{ template "kafka-connect.fullname" . }}-config
+            - name: CONNECT_OFFSET_STORAGE_TOPIC
+              value: {{ template "kafka-connect.fullname" . }}-offset
+            - name: CONNECT_STATUS_STORAGE_TOPIC
+              value: {{ template "kafka-connect.fullname" . }}-status
+            - name: CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL
+              value: {{ template "kafka-connect.cp-schema-registry.service-name" .}}
+            - name: CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL
+              value: {{ template "kafka-connect.cp-schema-registry.service-name" .}}
+            - name: CONNECT_KEY_CONVERTER
+              value: {{ .Values.connectKeyConverter }}
+            - name: CONNECT_VALUE_CONVERTER
+              value: {{ .Values.connectValueConverter }}
+            - name: CONNECT_INTERNAL_KEY_CONVERTER
+              value: {{ .Values.connectInternalKeyConverter }}
+            - name: CONNECT_INTERNAL_VALUE_CONVERTER
+              value: {{ .Values.connectInternalValueConverter }}
+            {{- if .Values.jmx.port }}
+            - name: KAFKA_JMX_PORT
+              value: "{{ .Values.jmx.port }}"
+            {{- end }}
+      volumes:
+      # - name: connect-avro-distributed
+      #   configMap:
+      #     name: connect-avro-distributed
+      - name: connect-avro-standalone
+        configMap:
+          name: connect-avro-standalone
+      - name: hbase-site
+        configMap:
+          name: hbase-site
+      - name: moonactivedaily-configmap
+        configMap:
+          name: moonactivedaily-configmap
+      - name: moonactiveplayers-configmap
+        configMap:
+          name: moonactiveplayers-configmap
+      {{- if .Values.prometheus.jmx.enabled }}
+      - name: jmx-config
+        configMap:
+          name: {{ template "kafka-connect.fullname" . }}-jmx-configmap
+      {{- end }}

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moonactiveplayers-configmap
+  labels:
+    app: "{{ template "kafka-connect.fullname" . }}"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+data:
+  moonactiveplayers-hbase-sink.properties: |
+    name=hbase-moonactiveplayers
+    connector.class=io.svectors.hbase.sink.HBaseSinkConnector
+    tasks.max=1
+    topics=moonactiveplayers
+    zookeeper.quorum=hbase-zookeeper:2181
+    event.parser.class=io.svectors.hbase.parser.JsonEventParser
+    hbase.moonactiveplayers.rowkey.columns=user_id,time
+    hbase.moonactiveplayers.rowkey.delimiter=#
+    hbase.moonactiveplayers.family=d

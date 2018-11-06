@@ -1,0 +1,47 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: {{ template "kafka-client.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        name: {{ template "kafka-client.fullname" . }}
+    spec:
+      containers:
+      - image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        name: {{ template "kafka-client.name" . }}
+        command:
+          - sh
+          - -c
+          - "exec tail -f /dev/null"
+        volumeMounts:
+        {{- range $secret := .Values.secrets }}
+          {{- if $secret.mountPath }}
+            {{- range $key := $secret.keys }}
+          - name: {{ $secret.name }}
+            mountPath: {{ $secret.mountPath }}/{{ $key }}
+            subPath: {{ $key }}
+            readOnly: true
+            {{- end }}
+          {{- end }}
+        {{- end }}
+          - name: {{ .Release.Name }}-ssl-properties
+            mountPath: /etc/kafka/client-ssl.properties
+            subPath: client-ssl.properties
+        resources: {}
+      volumes:
+        {{- range .Values.secrets }}
+        - name: {{ .name }}
+          secret:
+            secretName: {{ .name }}
+        {{- end }}
+        - name: {{ .Release.Name }}-ssl-properties
+          configMap:
+            name: {{ .Release.Name }}-ssl-properties
+      restartPolicy: Always
+status: {}

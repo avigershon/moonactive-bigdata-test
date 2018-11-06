@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moonactivedaily-configmap
+  labels:
+    app: "{{ template "kafka-connect.fullname" . }}"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+data:
+  moonactivedaily-hbase-sink.properties: |
+    name=hbase-moonactivedaily
+    connector.class=io.svectors.hbase.sink.HBaseSinkConnector
+    tasks.max=1
+    topics=moonactivedaily
+    zookeeper.quorum=hbase-zookeeper:2181
+    event.parser.class=io.svectors.hbase.parser.JsonEventParser
+    hbase.moonactivedaily.rowkey.columns=time,user_id
+    hbase.moonactivedaily.rowkey.delimiter=#
+    hbase.moonactivedaily.family=d

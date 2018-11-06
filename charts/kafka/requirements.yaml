@@ -1,0 +1,9 @@
+dependencies:
+- name: zookeeper
+  version: 1.1.1
+  repository: file://../zookeeper
+  condition: zookeeper.
+- name: schema-registry
+  version: 1.0.0
+  repository: file://../schema-registry
+  condition: schema-registry.enabled

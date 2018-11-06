@@ -1,0 +1,74 @@
+# Default values for elasticsearch.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+image:
+  repository: confluentinc/cp-kafka
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 0
+
+ingress:
+  enabled: false
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  # path: /
+  hosts:
+    - kafka-client.local
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+# secrets:
+# - name: kafka-truststore
+#   mountPath: /etc/kafka/secrets
+#   keys:
+#     key: "kafka.truststore.jks"
+# - name: kafka-keystore
+#   mountPath: /etc/kafka/secrets
+#   keys:
+#     key: "kafka.keystore.jks"
+# - name: kafka-password
+#   mountPath: /etc/kafka/secrets
+#   keys:
+#     key: "password.txt"
+
+configurationOverrides:
+  "bootstrap.servers": kafka:9092
+  # "security.protocol": SSL
+  # "ssl.truststore.location": /etc/kafka/secrets/kafka.truststore.jks
+  # "ssl.truststore.password": PY9Emm7j
+  # "ssl.keystore.location": /etc/kafka/secrets/kafka.keystore.jks
+  # "ssl.keystore.password": PY9Emm7j
+  # "ssl.key.password": PY9Emm7j
+  # "offsets.topic.replication.factor": 3
+  # "security.inter.broker.protocol": SSL
+  # "ssl.client.auth": required
+  # "auto.leader.rebalance.enable": true
+  # "auto.create.topics.enable": true
+  # "controlled.shutdown.enable": true
+  # "controlled.shutdown.max.retries": 100
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

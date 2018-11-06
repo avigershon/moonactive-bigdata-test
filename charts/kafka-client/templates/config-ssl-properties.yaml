@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-ssl-properties
+  labels:
+    app: {{ template "kafka-client.name" . }}
+    chart: {{ template "kafka-client.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  client-ssl.properties: |-
+{{ .Values.configurationOverrides | toYaml | indent 6 }}

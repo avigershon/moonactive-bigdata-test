@@ -1,0 +1,68 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "ksql.fullname" . }}
+  labels:
+    app: {{ template "ksql.name" . }}
+    chart: {{ template "ksql.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "ksql.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "ksql.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-server
+          image: "{{ .Values.image.repository }}-server:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash"]
+          args: ["-c","echo Waiting for Kafka to be ready... && \
+                       cub kafka-ready -b {{ .Values.kafka.host }}:{{ .Values.kafka.port }} 1 20 && \
+                       echo Waiting a few seconds for topic creation to finish... && \
+                       sleep 2 && \
+                       /usr/bin/ksql-server-start /etc/ksql/ksqlserver.properties --queries-file /etc/ksql/queries.sql"]
+          ports:
+            - name: headless
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          volumeMounts:
+          - name: config
+            mountPath: /etc/ksql/ksqlserver.properties
+            readOnly: true
+            subPath: ksqlserver.properties
+          - name: queries
+            mountPath: "/etc/ksql/queries.sql"
+            subPath: "queries.sql"
+        - name: {{ .Chart.Name }}-cli
+          image: "{{ .Values.image.repository }}-cli:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 0444
+          name: {{ template "ksql.name" . }}-configmap
+      - name: queries
+        configMap:
+          name: ksql-queries-configmap
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

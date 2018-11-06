@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ksql-queries-configmap
+  labels:
+    app: "{{ template "ksql.name" . }}"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+data:
+  queries.sql: |
+      SET 'auto.offset.reset' = 'earliest';
+
+      CREATE STREAM moonactiveplayers (user_id varchar, event varchar, time bigint, ip varchar, params varchar) WITH (kafka_topic='moonactivetest', value_format='JSON');
+
+      CREATE STREAM moonactivedaily (user_id varchar, event varchar, time bigint, ip varchar, params varchar) WITH (kafka_topic='moonactivetest', value_format='JSON');
